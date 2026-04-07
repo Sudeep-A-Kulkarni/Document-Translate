@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 42 33% 96%;
+    --foreground: 215 35% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 35% 14%;
+    --border: 35 20% 82%;
+    --input: 35 20% 82%;
+    --ring: 194 72% 34%;
+    --primary: 194 72% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 45% 92%;
+    --secondary-foreground: 215 30% 18%;
+    --muted: 36 32% 90%;
+    --muted-foreground: 215 16% 36%;
+    --accent: 13 71% 47%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background: #ece6dc;
+  }
+}
+
+@layer utilities {
+  .paper-grid {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+    background-position: center;
+    background-size: 28px 28px;
+  }
+
+  .deva-font {
+    font-family: var(--font-devanagari), "Mangal", "Nirmala UI", sans-serif;
+  }
+}

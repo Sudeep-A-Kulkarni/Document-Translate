@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FileDown, LoaderCircle } from "lucide-react";
 
 import { exportDocumentAsPdf } from "@/lib/exporters";
+import { getPaperPaddingPx, getPaperPixelDimensions, PAPER_SIZES, PAPER_SIZE_OPTIONS } from "@/lib/paper-sizes";
 import { LANGUAGE_LABELS, TRANSLATION_LANGUAGE_OPTIONS } from "@/lib/translation";
-import { DocumentLanguage, TargetLanguage, TranslationErrorResponse, TranslationResponse } from "@/lib/types";
+import { DocumentLanguage, PaperSize, TargetLanguage, TranslationErrorResponse, TranslationResponse } from "@/lib/types";
 
 function createStarterDocument() {
   const date = new Intl.DateTimeFormat("en-IN", {
@@ -34,6 +35,7 @@ Signature`;
 export function LetterGenerator() {
   const [sourceText, setSourceText] = useState(createStarterDocument);
   const [language, setLanguage] = useState<DocumentLanguage>("en");
+  const [paperSize, setPaperSize] = useState<PaperSize>("a4");
   const [translations, setTranslations] = useState<Record<TargetLanguage, string>>({
     hi: "",
     mr: ""
@@ -134,12 +136,21 @@ export function LetterGenerator() {
     return translations[language] || sourceText;
   }, [language, sourceText, translations]);
 
+  const selectedPaper = PAPER_SIZES[paperSize];
+  const paperDimensions = getPaperPixelDimensions(paperSize);
+  const paperPadding = getPaperPaddingPx();
+  const documentStyle = {
+    width: `${paperDimensions.widthPx}px`,
+    minHeight: `${paperDimensions.heightPx}px`,
+    padding: `${paperPadding.verticalPx}px ${paperPadding.horizontalPx}px`
+  };
+
   const handleDownloadPdf = async () => {
     if (!previewRef.current) {
       return;
     }
 
-    await exportDocumentAsPdf(previewRef.current, language);
+    await exportDocumentAsPdf(previewRef.current, language, paperSize);
   };
 
   const statusText = error
@@ -152,7 +163,7 @@ export function LetterGenerator() {
     <main className="min-h-screen bg-[#ece6dc] px-3 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <header className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/92 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <select
               aria-label="Select language"
               className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none ring-0"
@@ -165,9 +176,30 @@ export function LetterGenerator() {
                 </option>
               ))}
             </select>
-            <span className={`text-sm ${error ? "text-red-600" : "text-slate-500"}`}>
-              {statusText}
+            <select
+              aria-label="Select paper size"
+              className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none ring-0"
+              value={paperSize}
+              onChange={(event) => setPaperSize(event.target.value as PaperSize)}
+            >
+              {PAPER_SIZE_OPTIONS.map((option) => {
+                const paper = PAPER_SIZES[option];
+
+                return (
+                  <option key={option} value={option}>
+                    {paper.label} ({paper.widthMm} x {paper.heightMm} mm)
+                  </option>
+                );
+              })}
+            </select>
+            <span className="text-sm text-slate-500">
+              {selectedPaper.widthMm} x {selectedPaper.heightMm} mm
             </span>
+            {statusText ? (
+              <span className={`text-sm ${error ? "text-red-600" : "text-slate-500"}`}>
+                {statusText}
+              </span>
+            ) : null}
           </div>
           <button
             type="button"
@@ -180,17 +212,19 @@ export function LetterGenerator() {
           </button>
         </header>
 
-        <section className="mx-auto w-full max-w-[860px] rounded-[28px] border border-stone-200 bg-white shadow-paper">
+        <section className="w-full overflow-auto rounded-[28px] border border-stone-200 bg-white shadow-paper">
           {language === "en" ? (
             <textarea
               spellCheck={false}
               value={sourceText}
               onChange={(event) => setSourceText(event.target.value)}
-              className="min-h-[78vh] w-full resize-none rounded-[28px] border-0 bg-transparent px-6 py-7 text-[15px] leading-8 text-slate-900 outline-none sm:px-10 sm:py-10 sm:text-[16px]"
+              style={documentStyle}
+              className="mx-auto block resize-none rounded-[28px] border-0 bg-transparent text-[15px] leading-8 text-slate-900 outline-none sm:text-[16px]"
             />
           ) : (
             <div
-              className="deva-font min-h-[78vh] whitespace-pre-wrap px-6 py-7 text-[15px] leading-8 text-slate-900 sm:px-10 sm:py-10 sm:text-[16px]"
+              style={documentStyle}
+              className="deva-font mx-auto whitespace-pre-wrap text-[15px] leading-8 text-slate-900 sm:text-[16px]"
             >
               {visibleText}
             </div>
@@ -198,12 +232,11 @@ export function LetterGenerator() {
         </section>
       </div>
 
-      <div className="fixed left-[-200vw] top-0">
+      <div className="fixed top-0" style={{ left: "-100000px" }}>
         <div
           ref={previewRef}
-          className={`w-[794px] bg-white px-14 py-16 text-[16px] leading-8 text-slate-900 ${
-            language === "en" ? "" : "deva-font"
-          } whitespace-pre-wrap`}
+          style={documentStyle}
+          className={`bg-white text-[16px] leading-8 text-slate-900 ${language === "en" ? "" : "deva-font"} whitespace-pre-wrap`}
         >
           {visibleText}
         </div>

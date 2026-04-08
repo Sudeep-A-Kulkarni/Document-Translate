@@ -1,5 +1,6 @@
+import { DOCUMENT_PADDING_MM, PAPER_SIZES } from "@/lib/paper-sizes";
 import { LANGUAGE_LABELS } from "@/lib/translation";
-import { DocumentLanguage, TargetLanguage, TranslatedLetterDraft } from "@/lib/types";
+import { DocumentLanguage, PaperSize, TargetLanguage, TranslatedLetterDraft } from "@/lib/types";
 
 type DocxModule = typeof import("docx");
 
@@ -102,39 +103,50 @@ function cleanupDownload(url: string, anchor: HTMLAnchorElement) {
   }, 0);
 }
 
-export async function exportLetterAsPdf(element: HTMLElement, language: DocumentLanguage) {
+export async function exportLetterAsPdf(
+  element: HTMLElement,
+  language: DocumentLanguage,
+  paperSize: PaperSize = "a4"
+) {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+  const paper = PAPER_SIZES[paperSize];
+  const maxCanvasPixels = 20_000_000;
+  const estimatedPixels = element.scrollWidth * element.scrollHeight;
+  const scale = Math.min(2, Math.sqrt(maxCanvasPixels / Math.max(estimatedPixels, 1)));
   const canvas = await html2canvas(element, {
-    scale: 2,
+    scale,
     useCORS: true,
-    backgroundColor: "#ffffff"
+    backgroundColor: "#ffffff",
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight
   });
 
   const imageData = canvas.toDataURL("image/png");
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: "a4"
+    format: [paper.widthMm, paper.heightMm]
   });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const imageWidth = pageWidth - 16;
+  const imageWidth = pageWidth - DOCUMENT_PADDING_MM.horizontal * 2;
   const imageHeight = (canvas.height * imageWidth) / canvas.width;
+  const verticalMargin = DOCUMENT_PADDING_MM.vertical;
 
   let renderedHeight = imageHeight;
-  let positionY = 8;
+  let positionY = verticalMargin;
 
-  pdf.addImage(imageData, "PNG", 8, positionY, imageWidth, imageHeight);
-  renderedHeight -= pageHeight - 16;
+  pdf.addImage(imageData, "PNG", DOCUMENT_PADDING_MM.horizontal, positionY, imageWidth, imageHeight);
+  renderedHeight -= pageHeight - verticalMargin * 2;
 
   while (renderedHeight > 0) {
-    positionY = renderedHeight - imageHeight + 8;
+    positionY = renderedHeight - imageHeight + verticalMargin;
     pdf.addPage();
-    pdf.addImage(imageData, "PNG", 8, positionY, imageWidth, imageHeight);
-    renderedHeight -= pageHeight - 16;
+    pdf.addImage(imageData, "PNG", DOCUMENT_PADDING_MM.horizontal, positionY, imageWidth, imageHeight);
+    renderedHeight -= pageHeight - verticalMargin * 2;
   }
 
-  pdf.save(`administrative-letter-${LANGUAGE_LABELS[language].toLowerCase()}.pdf`);
+  pdf.save(`administrative-letter-${paper.label.toLowerCase()}-${LANGUAGE_LABELS[language].toLowerCase()}.pdf`);
 }
 
 export const exportDocumentAsPdf = exportLetterAsPdf;
